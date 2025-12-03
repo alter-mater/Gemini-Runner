@@ -1,3 +1,3 @@
-Latest Version v2.7
+Latest Version v3.0
 
 [プレイはこちらから](https://gemini-runner-one.vercel.app/)

@@ -1,6 +1,8 @@
 
 
 
+
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -519,7 +521,9 @@ export const LevelManager: React.FC = () => {
     }
 
     if (furthestZ > -SPAWN_DISTANCE) {
-         const minGap = 12 + (speed * 0.4); 
+         // TIGHTEN THE GAP: Reduce minGap scaling
+         // Base gap 12 -> 8, speed factor 0.4 -> 0.35 for tighter, more intense play
+         const minGap = 8 + (speed * 0.35); 
          const spawnZ = Math.min(furthestZ - minGap, -SPAWN_DISTANCE);
          
          const isLetterDue = distanceTraveled.current >= nextLetterDistance.current;
@@ -563,9 +567,9 @@ export const LevelManager: React.FC = () => {
 
          } else if (Math.random() < baseSpawnCheck) { 
             // Scaling Obstacle Probability:
-            // Base 20%, increases by 2% per level (capped at 60%)
-            const baseObstacleProb = 0.20 + (level * 0.02);
-            let obstacleProb = Math.min(0.6, baseObstacleProb);
+            // Base 20%, increases by 6% per level (capped at 80%) to significantly increase difficulty
+            const baseObstacleProb = 0.20 + (level * 0.06);
+            let obstacleProb = Math.min(0.8, baseObstacleProb);
             
             // Luck Charm reduces obstacle probability by 20% relative
             if (hasLuckCharm) obstacleProb *= 0.8;
@@ -618,9 +622,24 @@ export const LevelManager: React.FC = () => {
                     let countToSpawn = 1;
                     const p = Math.random();
 
-                    if (p > 0.80) countToSpawn = Math.min(3, availableLanes.length);
-                    else if (p > 0.50) countToSpawn = Math.min(2, availableLanes.length);
-                    else countToSpawn = 1;
+                    // Increased probability of multi-lane blockades at higher levels
+                    const multiLaneChance = level > 3 ? 0.4 + (level * 0.05) : 0.2; // Cap at ~0.9
+
+                    if (p < multiLaneChance) {
+                         // High level multi-spawn
+                         if (availableLanes.length >= 3) countToSpawn = 3;
+                         else countToSpawn = Math.min(2, availableLanes.length);
+                    } else if (p < multiLaneChance + 0.3) {
+                         countToSpawn = Math.min(2, availableLanes.length);
+                    } else {
+                         countToSpawn = 1;
+                    }
+
+                    // Always leave at least one lane open if spawning max lanes (e.g. 3 lanes, don't spawn 3 obstacles)
+                    // Unless user has double jump/skills to go over, but safe play is 1 open lane.
+                    if (countToSpawn >= availableLanes.length && availableLanes.length > 1) {
+                        countToSpawn = availableLanes.length - 1;
+                    }
 
                     // Spawn obstacles in selected lanes
                     for (let i = 0; i < countToSpawn; i++) {

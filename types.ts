@@ -3,9 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
-// Removed unused import to avoid potential type resolution issues
-// import { ThreeElements } from '@react-three/fiber';
-
 export enum GameStatus {
   MENU = 'MENU',
   LEVEL_SELECT = 'LEVEL_SELECT',
@@ -71,8 +68,7 @@ export interface ShopItem {
 declare global {
   namespace JSX {
     interface IntrinsicElements {
-      // Catch-all for React Three Fiber elements
-      [elemName: string]: any;
+       [elemName: string]: any;
     }
   }
 }

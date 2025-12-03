@@ -29,6 +29,7 @@ interface GameState {
   hasDoubleJump: boolean;
   hasImmortality: boolean;
   isImmortalityActive: boolean;
+  lastImmortalTime: number; // Cooldown tracking for immortality
   isShopInvincible: boolean; // Invincibility after shop close
   
   // Existing Items
@@ -80,6 +81,8 @@ interface GameState {
 
 const GEMINI_TARGET = ['G', 'E', 'M', 'I', 'N', 'I'];
 const SONIC_BLAST_COOLDOWN = 15000; // 15 seconds
+const IMMORTAL_COOLDOWN = 30000; // 30 seconds
+const IMMORTAL_DURATION = 3000; // 3.0 seconds
 
 export const useStore = create<GameState>((set, get) => ({
   status: GameStatus.MENU,
@@ -99,6 +102,7 @@ export const useStore = create<GameState>((set, get) => ({
   hasDoubleJump: false,
   hasImmortality: false,
   isImmortalityActive: false,
+  lastImmortalTime: 0,
   isShopInvincible: false,
   
   magnetLevel: 0,
@@ -146,6 +150,7 @@ export const useStore = create<GameState>((set, get) => ({
       hasDoubleJump: isCheat, 
       hasImmortality: isCheat, 
       isImmortalityActive: false,
+      lastImmortalTime: 0,
       isShopInvincible: false,
       
       magnetLevel: isCheat ? 5 : 0,
@@ -357,7 +362,7 @@ export const useStore = create<GameState>((set, get) => ({
                   set({ lives: Math.min(lives + 1, maxLives) });
                   break;
               case 'IMMORTAL':
-                  set({ hasImmortality: true });
+                  set({ hasImmortality: true, lastImmortalTime: 0 }); // Reset cooldown on purchase
                   break;
               case 'MAGNET':
                   set({ magnetLevel: Math.min(magnetLevel + 1, 5) });
@@ -393,12 +398,18 @@ export const useStore = create<GameState>((set, get) => ({
   },
 
   activateImmortality: () => {
-      const { hasImmortality, isImmortalityActive } = get();
-      if (hasImmortality && !isImmortalityActive) {
-          set({ isImmortalityActive: true });
+      const { hasImmortality, isImmortalityActive, lastImmortalTime } = get();
+      const now = Date.now();
+      
+      // Cooldown check
+      if (hasImmortality && !isImmortalityActive && (now - lastImmortalTime > IMMORTAL_COOLDOWN)) {
+          set({ 
+              isImmortalityActive: true,
+              lastImmortalTime: now
+          });
           setTimeout(() => {
               set({ isImmortalityActive: false });
-          }, 5000);
+          }, IMMORTAL_DURATION);
       }
   },
 

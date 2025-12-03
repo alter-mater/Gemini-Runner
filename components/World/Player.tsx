@@ -1,4 +1,10 @@
 
+
+
+
+
+
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -124,19 +130,34 @@ export const Player: React.FC = () => {
   const isInvincible = useRef(false);
   const lastDamageTime = useRef(0);
 
+  // Initialize Materials once
   const { armorMaterial, jointMaterial, glowMaterial, shadowMaterial, shieldMaterial } = useMemo(() => {
-      const isCheat = gameMode === GameMode.CHEAT;
-      const armorColor = isImmortalityActive || isShopInvincible || isCheat ? '#ffd700' : '#00aaff';
-      const glowColor = isImmortalityActive || isShopInvincible || isCheat ? '#ffffff' : '#00ffff';
-      
       return {
-          armorMaterial: new THREE.MeshStandardMaterial({ color: armorColor, roughness: 0.3, metalness: 0.8 }),
-          jointMaterial: new THREE.MeshStandardMaterial({ color: '#111111', roughness: 0.7, metalness: 0.5 }),
-          glowMaterial: new THREE.MeshBasicMaterial({ color: glowColor }),
+          armorMaterial: new THREE.MeshStandardMaterial({ 
+              color: '#00aaff', 
+              roughness: 0.3, 
+              metalness: 0.8, 
+              transparent: true, 
+              opacity: 1.0,
+              emissive: '#000000',
+              emissiveIntensity: 0
+          }),
+          jointMaterial: new THREE.MeshStandardMaterial({ 
+              color: '#111111', 
+              roughness: 0.7, 
+              metalness: 0.5, 
+              transparent: true, 
+              opacity: 1.0 
+          }),
+          glowMaterial: new THREE.MeshBasicMaterial({ 
+              color: '#00ffff', 
+              transparent: true, 
+              opacity: 1.0 
+          }),
           shadowMaterial: new THREE.MeshBasicMaterial({ color: '#000000', opacity: 0.3, transparent: true }),
           shieldMaterial: new THREE.MeshBasicMaterial({ color: '#00ffff', transparent: true, opacity: 0.3, wireframe: true })
       };
-  }, [isImmortalityActive, gameMode, isShopInvincible]);
+  }, []);
 
   useEffect(() => {
     setPlayerLane(lane);
@@ -312,23 +333,51 @@ export const Player: React.FC = () => {
         }
     }
 
-    // Flicker Logic for Invincibility
-    const showFlicker = isInvincible.current || isImmortalityActive || isShopInvincible || gameMode === GameMode.CHEAT;
-    if (pivotRef.current) {
-        if (showFlicker) {
-             if (isInvincible.current && gameMode !== GameMode.CHEAT && !isShopInvincible) {
-                 if (Date.now() - lastDamageTime.current > 1500) {
-                    isInvincible.current = false;
-                    pivotRef.current.visible = true;
-                 } else {
-                    pivotRef.current.visible = Math.floor(Date.now() / 50) % 2 === 0;
-                 }
-            } else if (isShopInvincible || isImmortalityActive || gameMode === GameMode.CHEAT) {
-                // Slower flicker/pulse for positive invincibility
-                pivotRef.current.visible = Math.floor(Date.now() / 100) % 2 === 0;
-            }
+    // --- VISUAL PULSE LOGIC ---
+    const isGoldMode = isImmortalityActive || isShopInvincible || gameMode === GameMode.CHEAT;
+    
+    // Check damage invincibility timeout
+    if (isInvincible.current && gameMode !== GameMode.CHEAT && !isShopInvincible && !isImmortalityActive) {
+         if (Date.now() - lastDamageTime.current > 1500) {
+            isInvincible.current = false;
+         }
+    }
+
+    if (isGoldMode) {
+        // GOLDEN AURA MODE - UPDATED (Less blinding)
+        const pulse = (Math.sin(state.clock.elapsedTime * 6) + 1) * 0.5; // Smooth 0-1, slightly slower (6)
+        const intensity = 0.2 + pulse * 0.8; // Reduced range: 0.2 to 1.0 (was 0.5 to 2.5)
+        
+        armorMaterial.color.setHex(0xffd700); // Gold
+        armorMaterial.emissive.setHex(0xff9900); // Slightly darker orange/gold base for emission
+        armorMaterial.emissiveIntensity = intensity;
+        armorMaterial.opacity = 1.0; 
+        
+        glowMaterial.color.setHex(0xffdd44); // Softer gold, not pure white
+        glowMaterial.opacity = 0.8; 
+        
+        jointMaterial.color.setHex(0x554422); // Bronze-ish
+
+    } else {
+        // NORMAL MODE
+        armorMaterial.color.setHex(0x00aaff); // Blue
+        armorMaterial.emissive.setHex(0x000000);
+        armorMaterial.emissiveIntensity = 0;
+        
+        glowMaterial.color.setHex(0x00ffff); // Cyan
+        jointMaterial.color.setHex(0x111111);
+
+        if (isInvincible.current) {
+            // Damage Flicker
+            const flicker = Math.sin(state.clock.elapsedTime * 30) > 0;
+            const opacity = flicker ? 0.2 : 0.8;
+            armorMaterial.opacity = opacity;
+            jointMaterial.opacity = opacity;
+            glowMaterial.opacity = opacity;
         } else {
-            pivotRef.current.visible = true;
+            armorMaterial.opacity = 1.0;
+            jointMaterial.opacity = 1.0;
+            glowMaterial.opacity = 1.0;
         }
     }
   });

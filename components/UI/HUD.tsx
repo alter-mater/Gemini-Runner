@@ -5,6 +5,10 @@
 
 
 
+
+
+
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -44,7 +48,7 @@ const SHOP_ITEMS: ShopItem[] = [
     {
         id: 'IMMORTAL',
         name: '無敵モード',
-        description: 'スペース/タップで5秒間無敵 (解放スキル)。',
+        description: 'スペース/タップで2.5秒間無敵 (クールダウン30秒)。',
         cost: 600,
         icon: Shield,
         oneTime: true
@@ -176,7 +180,12 @@ const generateShopItems = (state: ReturnType<typeof useStore.getState>): ShopIte
 
 const ShopScreen: React.FC = () => {
     const store = useStore();
-    const { currency, buyItem, closeShop, spendCurrency, hasDoubleJump, hasImmortality, magnetLevel, hasTimeWarp, shieldCount, hasGemBooster, hasLuckCharm, hasSonicBlast, hasDrone, hasRevive, hasDiscount, maxLives, lives } = store;
+    const { 
+        score, currency, buyItem, closeShop, spendCurrency, 
+        hasDoubleJump, hasImmortality, magnetLevel, hasTimeWarp, shieldCount, 
+        hasGemBooster, hasLuckCharm, hasSonicBlast, hasDrone, hasRevive, hasDiscount, 
+        maxLives, lives 
+    } = store;
     const [items, setItems] = useState<ShopItem[]>([]);
 
     useEffect(() => {
@@ -190,18 +199,12 @@ const ShopScreen: React.FC = () => {
     };
 
     const handleBuyAll = () => {
-        // We iterate through current items and try to buy them
-        // We re-check affordablity for each in case money runs out mid-loop
         items.forEach(item => {
-            // Check if item is still valid to buy (e.g. didn't hit max shield mid-loop)
             const currentStore = useStore.getState();
             let isValid = true;
-
-            // Re-check specific blocks that might change during the loop
             if (item.id === 'HEAL' && currentStore.lives >= currentStore.maxLives) isValid = false;
             if (item.id === 'SHIELD' && currentStore.shieldCount >= 3) isValid = false;
             
-            // Re-calculate cost
             let finalCost = currentStore.hasDiscount ? Math.floor(item.cost * 0.8) : item.cost;
             if (item.id === 'EXCHANGE') finalCost = currentStore.currency;
 
@@ -209,19 +212,70 @@ const ShopScreen: React.FC = () => {
                  buyItem(item.id, finalCost);
             }
         });
-        // Force re-render of button states is handled by store update, 
-        // but we might want to refresh the logic if needed. 
-        // Actually, the component will re-render because store values changed.
     };
 
     return (
-        <div className="absolute inset-0 bg-black/90 z-[100] text-white pointer-events-auto backdrop-blur-md overflow-y-auto">
-             <div className="flex flex-col items-center justify-center min-h-full py-8 px-4">
-                 <h2 className="text-3xl md:text-4xl font-black text-cyan-400 mb-2 font-cyber tracking-widest text-center">CYBER SHOP</h2>
-                 {hasDiscount && <p className="text-yellow-400 font-bold mb-2">VIP会員様: 全品20% OFF</p>}
+        <div className="absolute inset-0 bg-black/95 z-[100] text-white pointer-events-auto backdrop-blur-md overflow-y-auto">
+             <div className="flex flex-col items-center justify-start min-h-full py-6 px-4">
+                 <h2 className="text-3xl md:text-4xl font-black text-cyan-400 mb-4 font-cyber tracking-widest text-center shadow-cyan-500/50 drop-shadow-md">
+                    CYBER SHOP
+                 </h2>
+                 {hasDiscount && <p className="text-yellow-400 font-bold mb-4 text-sm bg-yellow-900/30 px-3 py-1 rounded border border-yellow-500/50">VIP会員様: 全品20% OFF</p>}
+
+                 {/* --- Status Dashboard --- */}
+                 <div className="w-full max-w-4xl bg-gray-900/80 border border-gray-700 rounded-2xl p-4 mb-6 shadow-lg">
+                    {/* Top Row: Score & Lives */}
+                    <div className="flex justify-between items-center mb-4 border-b border-gray-800 pb-3">
+                        <div className="flex items-center">
+                            <span className="text-xs text-gray-500 mr-2 font-mono uppercase tracking-widest">CURRENT SCORE</span>
+                            <span className="text-xl md:text-2xl font-bold text-white font-cyber">{score.toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center">
+                             {lives > 5 ? (
+                                 <div className="flex items-center space-x-1">
+                                     {[...Array(5)].map((_, i) => (
+                                        <Heart key={i} className="w-5 h-5 text-pink-500 fill-pink-500" />
+                                     ))}
+                                     <span className="text-lg font-bold text-pink-400 ml-1">+{lives - 5}</span>
+                                 </div>
+                             ) : (
+                                 [...Array(maxLives)].map((_, i) => (
+                                    <Heart 
+                                        key={i} 
+                                        className={`w-5 h-5 ${i < lives ? 'text-pink-500 fill-pink-500' : 'text-gray-800 fill-gray-800'}`} 
+                                    />
+                                 ))
+                             )}
+                        </div>
+                    </div>
+
+                    {/* Inventory / Skills Grid */}
+                    <div className="flex flex-wrap gap-2 justify-center md:justify-start">
+                        {/* Shield */}
+                        <div className={`flex items-center px-2 py-1 rounded border ${shieldCount > 0 ? 'bg-cyan-900/30 border-cyan-500/50 text-cyan-400' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>
+                            <Disc className="w-4 h-4 mr-1" />
+                            <span className="text-xs font-mono font-bold">SHIELD x{shieldCount}</span>
+                        </div>
+                        {/* Magnet */}
+                        <div className={`flex items-center px-2 py-1 rounded border ${magnetLevel > 0 ? 'bg-pink-900/30 border-pink-500/50 text-pink-400' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>
+                            <Magnet className="w-4 h-4 mr-1" />
+                            <span className="text-xs font-mono font-bold">MAG Lv.{magnetLevel}</span>
+                        </div>
+                        
+                        {/* Icons for other skills */}
+                        {hasDoubleJump && <div title="Double Jump" className="p-1 bg-blue-900/30 border border-blue-500/50 rounded text-blue-400"><ArrowUpCircle className="w-4 h-4"/></div>}
+                        {hasImmortality && <div title="Immortality" className="p-1 bg-yellow-900/30 border border-yellow-500/50 rounded text-yellow-400"><Shield className="w-4 h-4"/></div>}
+                        {hasTimeWarp && <div title="Time Warp" className="p-1 bg-purple-900/30 border border-purple-500/50 rounded text-purple-400"><Clock className="w-4 h-4"/></div>}
+                        {hasSonicBlast && <div title="Sonic Blast" className="p-1 bg-orange-900/30 border border-orange-500/50 rounded text-orange-400"><Radio className="w-4 h-4"/></div>}
+                        {hasGemBooster && <div title="Gem Booster" className="p-1 bg-yellow-900/30 border border-yellow-500/50 rounded text-yellow-400"><Sparkles className="w-4 h-4"/></div>}
+                        {hasLuckCharm && <div title="Luck Charm" className="p-1 bg-green-900/30 border border-green-500/50 rounded text-green-400"><Clover className="w-4 h-4"/></div>}
+                        {hasDrone && <div title="Drone" className="p-1 bg-red-900/30 border border-red-500/50 rounded text-red-400"><Bot className="w-4 h-4"/></div>}
+                        {hasRevive && <div title="Revive" className="p-1 bg-teal-900/30 border border-teal-500/50 rounded text-teal-400"><Cross className="w-4 h-4"/></div>}
+                    </div>
+                 </div>
                  
-                 {/* Wallet Display */}
-                 <div className="flex items-center justify-between gap-4 mb-8">
+                 {/* Wallet & Actions */}
+                 <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6 w-full max-w-4xl">
                      <div className="flex items-center bg-gray-800 px-6 py-2 rounded-full border border-yellow-500/50 shadow-[0_0_15px_rgba(255,215,0,0.3)]">
                          <Diamond className="w-5 h-5 text-yellow-400 mr-2" fill="currentColor" />
                          <span className="text-xl md:text-2xl font-bold font-mono text-yellow-100">{currency.toLocaleString()}</span>
@@ -253,28 +307,21 @@ const ShopScreen: React.FC = () => {
                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 max-w-4xl w-full mb-8">
                      {items.length > 0 ? items.map((item, idx) => {
                          const Icon = item.icon;
-                         
-                         // Determine visual status
                          let finalCost = hasDiscount ? Math.floor(item.cost * 0.8) : item.cost;
                          let canAfford = currency >= finalCost;
-                         
-                         // Special logic for Exchange
                          if (item.id === 'EXCHANGE') {
-                             finalCost = currency; // Show current wallet as 'cost'
+                             finalCost = currency;
                              canAfford = currency > 0;
                          }
 
-                         // Re-check conditions for disabling buttons after purchase
                          let isDisabled = !canAfford;
                          let disabledReason = '';
 
-                         // Check blocking conditions again (dynamic) for consumables/levels
                          if (item.id === 'HEAL' && lives >= maxLives) { isDisabled = true; disabledReason = 'MAX LIFE'; }
                          if (item.id === 'SHIELD' && shieldCount >= 3) { isDisabled = true; disabledReason = 'MAX'; }
                          if (item.id === 'MAX_LIFE' && maxLives >= 10) { isDisabled = true; disabledReason = 'MAX'; }
                          if (item.id === 'MAGNET' && magnetLevel >= 5) { isDisabled = true; disabledReason = 'MAX'; }
 
-                         // Check blocking conditions for one-time skills
                          if (item.id === 'DOUBLE_JUMP' && hasDoubleJump) { isDisabled = true; disabledReason = 'SOLD'; }
                          if (item.id === 'IMMORTAL' && hasImmortality) { isDisabled = true; disabledReason = 'SOLD'; }
                          if (item.id === 'TIME_WARP' && hasTimeWarp) { isDisabled = true; disabledReason = 'SOLD'; }
@@ -299,11 +346,7 @@ const ShopScreen: React.FC = () => {
                                  <p className="text-gray-400 text-xs md:text-sm mb-4 h-10 md:h-12 flex items-center justify-center">{item.description}</p>
                                  
                                  <button 
-                                    onClick={() => {
-                                        if (buyItem(item.id, finalCost)) {
-                                            // Store update triggers re-render
-                                        }
-                                    }}
+                                    onClick={() => buyItem(item.id, finalCost)}
                                     disabled={isDisabled}
                                     className={`px-4 md:px-6 py-2 rounded font-bold w-full text-sm md:text-base flex items-center justify-center transition-all ${
                                         isDisabled 
@@ -342,20 +385,26 @@ const ShopScreen: React.FC = () => {
 };
 
 export const HUD: React.FC = () => {
-  const { score, currency, lives, maxLives, collectedLetters, status, level, restartGame, startGame, selectMode, gemsCollected, distance, isImmortalityActive, speed, showJumpAlert, gameMode, magnetLevel, shieldCount, isTimeWarpActive, hasGemBooster, hasLuckCharm, hasSonicBlast, lastSonicBlastTime, triggerSonicBlast, targetLevels, hasDrone, hasRevive } = useStore();
+  const { score, currency, lives, maxLives, collectedLetters, status, level, restartGame, startGame, selectMode, gemsCollected, distance, isImmortalityActive, speed, showJumpAlert, gameMode, magnetLevel, shieldCount, isTimeWarpActive, hasGemBooster, hasLuckCharm, hasSonicBlast, lastSonicBlastTime, triggerSonicBlast, targetLevels, hasDrone, hasRevive, hasImmortality, activateImmortality, lastImmortalTime } = useStore();
   const [sonicCooldown, setSonicCooldown] = useState(0);
+  const [immortalCooldown, setImmortalCooldown] = useState(0);
   const target = ['G', 'E', 'M', 'I', 'N', 'I'];
 
-  // Sonic Blast Cooldown Timer
+  // Cooldown Timer Logic
   useEffect(() => {
-    if (!hasSonicBlast) return;
     const interval = setInterval(() => {
-        const diff = Date.now() - lastSonicBlastTime;
-        const remaining = Math.max(0, 15000 - diff);
-        setSonicCooldown(remaining);
+        const now = Date.now();
+        if (hasSonicBlast) {
+            const diff = now - lastSonicBlastTime;
+            setSonicCooldown(Math.max(0, 15000 - diff));
+        }
+        if (hasImmortality) {
+            const diff = now - lastImmortalTime;
+            setImmortalCooldown(Math.max(0, 30000 - diff));
+        }
     }, 100);
     return () => clearInterval(interval);
-  }, [hasSonicBlast, lastSonicBlastTime]);
+  }, [hasSonicBlast, lastSonicBlastTime, hasImmortality, lastImmortalTime]);
 
   const handleSonicBlast = () => {
       const fired = triggerSonicBlast();
@@ -685,9 +734,31 @@ export const HUD: React.FC = () => {
              )}
         </div>
 
-        {/* Sonic Blast Button (Bottom Right) */}
-        {hasSonicBlast && (
-            <div className="absolute bottom-8 right-8 pointer-events-auto">
+        {/* Action Buttons (Bottom Right) */}
+        <div className="absolute bottom-8 right-8 pointer-events-auto flex gap-4 items-end">
+            {/* Immortal Skill Button Indicator */}
+            {hasImmortality && (
+                <button
+                    onClick={activateImmortality}
+                    disabled={immortalCooldown > 0 || isImmortalityActive}
+                    className={`relative w-16 h-16 rounded-full border-4 flex items-center justify-center transition-all ${
+                        immortalCooldown > 0 || isImmortalityActive
+                        ? 'border-gray-600 bg-gray-800 cursor-not-allowed' 
+                        : 'border-yellow-500 bg-yellow-900/50 hover:scale-110 hover:bg-yellow-600/50 shadow-[0_0_20px_gold]'
+                    }`}
+                >
+                    <Shield className={`w-8 h-8 ${immortalCooldown > 0 ? 'text-gray-500' : 'text-yellow-400 animate-pulse'}`} />
+                    {immortalCooldown > 0 && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full font-mono text-white text-lg font-bold">
+                            {Math.ceil(immortalCooldown / 1000)}
+                        </div>
+                    )}
+                    <div className="absolute -bottom-6 text-xs text-yellow-400 font-bold tracking-widest whitespace-nowrap">[ SPACE ]</div>
+                </button>
+            )}
+
+            {/* Sonic Blast Button */}
+            {hasSonicBlast && (
                 <button
                     onClick={handleSonicBlast}
                     disabled={sonicCooldown > 0}
@@ -705,8 +776,8 @@ export const HUD: React.FC = () => {
                     )}
                     <div className="absolute -bottom-6 text-xs text-orange-400 font-bold tracking-widest">[ Z ]</div>
                 </button>
-            </div>
-        )}
+            )}
+        </div>
 
         {/* Gemini Collection Status */}
         <div className="absolute top-16 md:top-24 left-1/2 transform -translate-x-1/2 flex space-x-2 md:space-x-3 mt-8">
